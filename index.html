@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TeleBotFleet — Advanced Telegram Bot Hosting 24/7</title>
+<meta name="description" content="Host your Telegram bots 24/7 with TeleBotFleet. 2 bots free for users, unlimited for admins. Auto-restart, logs, webhooks.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter','sans-serif'], mono: ['JetBrains Mono','monospace'], display: ['Space Grotesk','sans-serif'] },
+      colors: {
+        navy: {900:'#0a0e1f',800:'#11162e',700:'#1a2142'},
+        neon: {cyan:'#00e5ff', purple:'#8b5cf6', pink:'#ec4899', lime:'#00ff88'}
+      },
+      animation: {
+        float: 'float 6s ease-in-out infinite',
+        pulseSlow: 'pulse 3s cubic-bezier(0.4,0,0.6,1) infinite',
+        glow: 'glow 2s ease-in-out infinite alternate',
+        slideUp: 'slideUp 0.5s ease-out',
+      },
+      keyframes: {
+        float: {'0%,100%':{transform:'translateY(0)'},'50%':{transform:'translateY(-12px)'}},
+        glow: {'0%':{boxShadow:'0 0 20px rgba(0,229,255,0.4)'},'100%':{boxShadow:'0 0 40px rgba(139,92,246,0.6)'}},
+        slideUp: {'0%':{opacity:0,transform:'translateY(20px)'},'100%':{opacity:1,transform:'translateY(0)'}}
+      }
+    }
+  }
+}
+</script>
+<style>
+*{scroll-behavior:smooth}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:#0a0e1f}
+::-webkit-scrollbar-thumb{background:linear-gradient(#00e5ff,#8b5cf6);border-radius:10px}
+.glass{background:rgba(255,255,255,0.06);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.1)}
+.glass-hover:hover{background:rgba(255,255,255,0.09);border-color:rgba(0,229,255,0.3)}
+.gradient-text{background:linear-gradient(90deg,#00e5ff,#8b5cf6,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.gradient-border{position:relative}
+.gradient-border::before{content:'';position:absolute;inset:-1px;background:linear-gradient(90deg,#00e5ff,#8b5cf6);border-radius:inherit;z-index:-1}
+.terminal-bg{background:linear-gradient(180deg,#0f172a 0%,#020617 100%)}
+.grid-pattern{background-image:radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0);background-size:32px 32px}
+.hide-scrollbar::-webkit-scrollbar{display:none}
+.hide-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+</style>
+</head>
+<body class="bg-navy-900 text-white overflow-x-hidden">
+<!-- Toast Container -->
+<div id="toastWrap" class="fixed top-20 right-4 z-[9999] space-y-2"></div>
+
+<!-- Navbar -->
+<nav class="fixed top-0 w-full z-50 glass border-b border-white/10">
+  <div class="max-w-[1400px] mx-auto px-4 md:px-6 h-[64px] flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center shadow-lg shadow-cyan-500/20">
+        <i class="fa-brands fa-telegram text-xl"></i>
+      </div>
+      <div>
+        <h1 class="font-display font-bold text-[18px] leading-none tracking-tight">TELEBOTFLEET</h1>
+        <p class="text-[10px] tracking-[0.2em] text-white/60 font-semibold -mt-0.5">HOSTING PLATFORM</p>
+      </div>
+      <span class="hidden md:inline-flex ml-3 px-2.5 py-1 rounded-full bg-neon-lime/15 text-neon-lime text-[11px] font-bold border border-neon-lime/30"><span class="w-2 h-2 bg-neon-lime rounded-full animate-pulse inline-block mr-1.5 translate-y-[-1px]"></span>99.99% UPTIME</span>
+    </div>
+    <div class="hidden lg:flex items-center gap-7 text-sm font-medium">
+      <a href="#home" class="hover:text-neon-cyan transition">Home</a>
+      <a href="#features" class="hover:text-neon-cyan transition">Features</a>
+      <a href="#pricing" class="hover:text-neon-cyan transition">Pricing</a>
+      <a href="#dashboard" onclick="scrollToDashboard()" class="hover:text-neon-cyan transition">Dashboard</a>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="navDashboardBtn" onclick="scrollToDashboard()" class="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-semibold transition"><i class="fa-solid fa-table-columns"></i> Dashboard</button>
+      <div id="authNav">
+        <button onclick="openAuth('login')" class="px-5 py-2.5 rounded-full bg-gradient-to-r from-neon-cyan to-neon-purple text-navy-900 font-bold text-sm shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition">Login / Register</button>
+      </div>
+      <div id="userNav" class="hidden items-center gap-3">
+        <span id="navUserName" class="text-sm font-semibold"></span>
+        <div id="navAvatar" class="w-9 h-9 rounded-full bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-sm">U</div>
+        <button onclick="logout()" class="w-9 h-9 rounded-full bg-white/10 hover:bg-red-500/20 hover:text-red-400 flex items-center justify-center transition"><i class="fa-solid fa-right-from-bracket text-sm"></i></button>
+      </div>
+      <button id="mobileMenuBtn" class="lg:hidden w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center"><i class="fa-solid fa-bars"></i></button>
+    </div>
+  </div>
+  <div id="mobileMenu" class="hidden lg:hidden border-t border-white/10 bg-navy-900/95 backdrop-blur-xl px-4 py-4 space-y-3">
+    <a href="#home" class="block py-2">Home</a><a href="#features" class="block py-2">Features</a><a href="#pricing" class="block py-2">Pricing</a><a href="#dashboard" onclick="scrollToDashboard()" class="block py-2 text-neon-cyan">Dashboard</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section id="home" class="relative pt-[64px] overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-b from-[#0a0e1f] via-[#0d1230] to-[#0a0e1f]"></div>
+  <div class="absolute inset-0 grid-pattern opacity-40"></div>
+  <div class="absolute top-20 right-[10%] w-[500px] h-[500px] bg-neon-purple/20 blur-[120px] rounded-full"></div>
+  <div class="absolute top-40 left-[5%] w-[400px] h-[400px] bg-neon-cyan/15 blur-[120px] rounded-full"></div>
+  <div class="relative max-w-[1400px] mx-auto px-4 md:px-6 py-10 md:py-14">
+    <div class="grid lg:grid-cols-2 gap-10 items-center">
+      <div class="space-y-6 animate-slideUp">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass text-xs font-semibold">
+          <span class="px-2 py-0.5 rounded-full bg-neon-lime text-navy-900 font-bold text-[11px]">NEW</span>
+          <span class="text-white/80">Admin can host unlimited bots • Users 2 bots free</span>
+          <i class="fa-solid fa-arrow-right text-neon-cyan"></i>
+        </div>
+        <h1 class="font-display font-[900] text-[38px] md:text-[56px] leading-[0.95] tracking-tight">
+          HOST YOUR<br>
+          <span class="gradient-text">TELEGRAM BOTS</span><br>
+          24/7 NON-STOP
+        </h1>
+        <p class="text-white/60 text-[15px] md:text-[17px] leading-relaxed max-w-[560px]">
+          The most advanced fleet for Telegram automation. Deploy in seconds, auto-restart, live logs, webhooks &amp; 99.99% uptime. Built for creators &amp; admins.
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <button onclick="openCreateFlow()" class="px-7 py-3.5 rounded-full bg-gradient-to-r from-neon-cyan to-neon-purple text-white font-bold shadow-xl shadow-purple-500/25 hover:scale-[1.02] transition flex items-center gap-2">
+            <i class="fa-solid fa-rocket"></i> Deploy Bot Now
+          </button>
+          <button onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})" class="px-7 py-3.5 rounded-full glass font-semibold hover:bg-white/10 transition flex items-center gap-2">
+            <i class="fa-solid fa-circle-play"></i> How it Works
+          </button>
+        </div>
+        <div class="flex flex-wrap items-center gap-6 pt-2 text-sm">
+          <div class="flex items-center gap-2"><span class="w-8 h-8 rounded-full bg-neon-lime/20 flex items-center justify-center text-neon-lime"><i class="fa-solid fa-check"></i></span> <span class="font-semibold">No credit card</span></div>
+          <div class="flex items-center gap-2"><span class="w-8 h-8 rounded-full bg-neon-cyan/20 flex items-center justify-center text-neon-cyan"><i class="fa-solid fa-bolt"></i></span> <span class="font-semibold">Deploy in 8 sec</span></div>
+          <div class="flex items-center gap-2"><span class="w-8 h-8 rounded-full bg-neon-purple/20 flex items-center justify-center text-neon-purple"><i class="fa-solid fa-shield-halved"></i></span> <span class="font-semibold">Encrypted tokens</span></div>
+        </div>
+        <!-- Mini stats -->
+        <div class="grid grid-cols-3 gap-3 pt-4">
+          <div class="glass rounded-2xl p-4">
+            <div class="text-2xl font-black" id="heroBots">2.4k+</div><div class="text-xs text-white/50 font-semibold tracking-wide">BOTS HOSTED</div>
+          </div>
+          <div class="glass rounded-2xl p-4">
+            <div class="text-2xl font-black">99.99%</div><div class="text-xs text-white/50 font-semibold">UPTIME SLA</div>
+          </div>
+          <div class="glass rounded-2xl p-4">
+            <div class="text-2xl font-black">&lt;50ms</div><div class="text-xs text-white/50 font-semibold">LATENCY</div>
+          </div>
+        </div>
+      </div>
+      <!-- Right Card -->
+      <div class="relative lg:h-[620px] flex items-center">
+        <div class="absolute inset-0 bg-gradient-to-br from-neon-cyan/10 via-transparent to-neon-purple/10 rounded-[32px] blur"></div>
+        <div class="relative w-full glass rounded-[24px] overflow-hidden shadow-2xl">
+          <!-- Terminal header -->
+          <div class="h-12 flex items-center justify-between px-5 bg-white/[0.04] border-b border-white/10">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-red-400"></span><span class="w-3 h-3 rounded-full bg-yellow-400"></span><span class="w-3 h-3 rounded-full bg-green-400"></span>
+              <span class="ml-3 text-xs font-mono text-white/60">telebotfleet • fleetctl</span>
+            </div>
+            <span class="px-2.5 py-1 rounded-full bg-neon-lime/15 text-neon-lime text-xs font-bold border border-neon-lime/20 flex items-center gap-1.5"><span class="w-2 h-2 bg-neon-lime rounded-full animate-pulse"></span> LIVE</span>
+          </div>
+          <div class="p-5 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold">Fleet Status</h3>
+              <span class="text-xs px-2 py-1 rounded-full bg-white/10 font-mono" id="heroLiveTime">00:00:00 UTC</span>
+            </div>
+            <!-- Bot cards preview -->
+            <div class="space-y-3">
+              <div class="gradient-border rounded-2xl p-[1px]">
+                <div class="bg-navy-800 rounded-2xl p-4 flex items-center gap-4">
+                  <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center text-xl">🤖</div>
+                  <div class="flex-1">
+                    <div class="font-bold text-sm flex items-center gap-2">@ShopAssist_Bot <span class="w-2 h-2 bg-neon-lime rounded-full animate-pulse"></span> <span class="text-[11px] px-2 py-0.5 rounded-full bg-neon-lime/15 text-neon-lime border border-neon-lime/20">RUNNING</span></div>
+                    <div class="text-xs text-white/50 font-mono">up 14h 22m • 1,248 req • eu-west-1</div>
+                  </div>
+                  <i class="fa-solid fa-ellipsis"></i>
+                </div>
+              </div>
+              <div class="glass rounded-2xl p-4 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-xl">⚡</div>
+                <div class="flex-1">
+                  <div class="font-bold text-sm flex items-center gap-2">@CryptoAlert_Bot <span class="w-2 h-2 bg-neon-lime rounded-full animate-pulse"></span> <span class="text-[11px] px-2 py-0.5 rounded-full bg-neon-lime/15 text-neon-lime border border-neon-lime/20">RUNNING</span></div>
+                  <div class="text-xs text-white/50 font-mono">up 72h 05m • 9,402 req • us-east-1</div>
+                </div>
+                <i class="fa-solid fa-ellipsis text-white/40"></i>
+              </div>
+              <div class="glass rounded-2xl p-4 flex items-center gap-4 opacity-60">
+                <div class="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-xl">🛒</div>
+                <div class="flex-1">
+                  <div class="font-bold text-sm flex items-center gap-2">@OrderTracker_Bot <span class="w-2 h-2 bg-gray-400 rounded-full"></span> <span class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-white/60">STOPPED</span></div>
+                  <div class="text-xs text-white/50 font-mono">stopped • 342 req • ap-south-1</div>
+                </div>
+              </div>
+            </div>
+            <!-- Logs preview -->
+            <div class="terminal-bg rounded-xl p-4 font-mono text-xs leading-relaxed border border-white/10">
+              <div class="flex items-center gap-2 text-white/40 mb-2"><i class="fa-solid fa-terminal"></i> live logs — fleetctl logs --follow</div>
+              <div class="space-y-1 text-white/80">
+                <div><span class="text-white/30">[14:22:31]</span> <span class="text-neon-cyan">✔</span> @ShopAssist_Bot → webhook delivered (42ms)</div>
+                <div><span class="text-white/30">[14:22:33]</span> <span class="text-neon-lime">●</span> polling: getUpdates offset=88231</div>
+                <div><span class="text-white/30">[14:22:35]</span> <span class="text-neon-purple">↗</span> admin broadcast queued → 2.4k users</div>
+                <div class="flex items-center gap-2"><span class="w-2 h-5 bg-neon-cyan animate-pulse inline-block"></span><span class="text-white/30">listening 24/7…</span></div>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div class="glass rounded-xl py-3"><div class="font-black text-neon-cyan">2.4k</div><div class="text-[10px] tracking-widest text-white/50 font-bold">BOTS</div></div>
+              <div class="glass rounded-xl py-3"><div class="font-black text-neon-lime">18.2M</div><div class="text-[10px] tracking-widest text-white/50 font-bold">REQUESTS</div></div>
+              <div class="glass rounded-xl py-3"><div class="font-black text-neon-purple">4.9★</div><div class="text-[10px] tracking-widest text-white/50 font-bold">RATING</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Trusted -->
+<div class="max-w-[1400px] mx-auto px-4 md:px-6">
+  <div class="glass rounded-2xl px-6 py-4 flex flex-wrap items-center justify-between gap-4 text-xs font-semibold tracking-widest text-white/50">
+    <span>TRUSTED BY 10,000+ DEVELOPERS</span>
+    <div class="flex items-center gap-6 flex-wrap">
+      <span class="flex items-center gap-2"><i class="fa-brands fa-telegram text-neon-cyan"></i> Telegram Partners</span>
+      <span class="flex items-center gap-2"><i class="fa-solid fa-shield-halved text-neon-lime"></i> SOC2 Certified</span>
+      <span class="flex items-center gap-2"><i class="fa-solid fa-bolt text-yellow-400"></i> 24/7 Fleet</span>
+      <span class="flex items-center gap-2"><i class="fa-solid fa-code"></i> API First</span>
+    </div>
+  </div>
+</div>
+
+<!-- Features -->
+<section id="features" class="max-w-[1400px] mx-auto px-4 md:px-6 py-14">
+  <div class="text-center max-w-2xl mx-auto space-y-3">
+    <span class="inline-flex px-3 py-1 rounded-full bg-neon-purple/15 text-neon-purple text-xs font-bold border border-neon-purple/30 tracking-widest">FEATURES</span>
+    <h2 class="font-display font-black text-[32px] md:text-[42px] leading-none">Everything you need to<br><span class="gradient-text">ship bots faster</span></h2>
+    <p class="text-white/60">From auto-restart to encrypted vault — production grade without DevOps.</p>
+  </div>
+  <div class="grid md:grid-cols-3 gap-5 mt-10">
+    <div class="glass glass-hover rounded-[20px] p-6 space-y-4 transition">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-cyan to-cyan-600 flex items-center justify-center text-xl"><i class="fa-solid fa-infinity"></i></div>
+      <h3 class="font-bold text-lg">24/7 Non-Stop Hosting</h3>
+      <p class="text-sm text-white/60 leading-relaxed">Long polling + webhooks with auto failover. We keep your bot online even when Telegram hiccups.</p>
+      <div class="flex items-center gap-2 text-xs font-mono text-neon-cyan"><span class="w-2 h-2 bg-neon-cyan rounded-full animate-pulse"></span> uptime 99.99% SLA</div>
+    </div>
+    <div class="glass glass-hover rounded-[20px] p-6 space-y-4 transition">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-purple to-purple-600 flex items-center justify-center text-xl"><i class="fa-solid fa-layer-group"></i></div>
+      <h3 class="font-bold text-lg">Smart Limits</h3>
+      <p class="text-sm text-white/60 leading-relaxed">Users host <b class="text-white">2 bots free</b>. Admins get <b class="text-white">unlimited</b> fleet + priority queue.</p>
+      <div class="flex gap-2 text-xs"><span class="px-2.5 py-1 rounded-full bg-white/10 font-bold">USER: 2 BOTS</span><span class="px-2.5 py-1 rounded-full bg-neon-purple text-white font-bold">ADMIN: ∞</span></div>
+    </div>
+    <div class="glass glass-hover rounded-[20px] p-6 space-y-4 transition">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-lime to-emerald-600 flex items-center justify-center text-xl text-navy-900"><i class="fa-solid fa-rotate"></i></div>
+      <h3 class="font-bold text-lg">Auto-Restart & Health</h3>
+      <p class="text-sm text-white/60 leading-relaxed">Crash detection, 15s restart, CPU/RAM metrics, and heartbeat logs streaming live.</p>
+      <div class="text-xs font-mono bg-black/40 rounded-lg px-3 py-2 border border-white/10">fleetctl health --watch</div>
+    </div>
+    <div class="glass glass-hover rounded-[20px] p-6 space-y-4 transition">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-xl"><i class="fa-solid fa-terminal"></i></div>
+      <h3 class="font-bold text-lg">Live Logs & Webhooks</h3>
+      <p class="text-sm text-white/60 leading-relaxed">Terminal-grade logs, setWebhook in one click, test messages & Telegram getMe verification.</p>
+      <div class="flex items-center gap-2 text-xs"><span class="px-2 py-1 rounded-full bg-neon-cyan/15 text-neon-cyan font-bold border border-neon-cyan/30">LIVE</span><span class="px-2 py-1 rounded-full bg-white/10">WEBHOOKS</span></div>
+    </div>
+    <div class="glass glass-hover rounded-[20px] p-6 space-y-4 transition">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-xl"><i class="fa-solid fa-lock"></i></div>
+      <h3 class="font-bold text-lg">Encrypted Vault</h3>
+      <p class="text-sm text-white/60 leading-relaxed">Tokens AES-256 encrypted at rest, masked in UI, only decrypted for Telegram API calls.</p>
+      <div class="text-xs font-mono text-white/50 flex items-center gap-2"><i class="fa-solid fa-key"></i> 123456:AAH•••• ••••PalDsaw</div>
+    </div>
+    <div class="glass glass-hover rounded-[20px] p-6 space-y-4 transition">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-xl"><i class="fa-solid fa-chart-line"></i></div>
+      <h3 class="font-bold text-lg">Admin Fleet Control</h3>
+      <p class="text-sm text-white/60 leading-relaxed">Admin panel: all users, all bots, kill switch, broadcasts, system metrics & charts.</p>
+      <button onclick="scrollToDashboard()" class="text-xs font-bold px-3 py-1.5 rounded-full bg-white text-navy-900">OPEN ADMIN →</button>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing" class="max-w-[1400px] mx-auto px-4 md:px-6 pb-12">
+  <div class="grid md:grid-cols-2 gap-6">
+    <div class="glass rounded-[24px] p-7 space-y-5">
+      <div class="flex items-center justify-between">
+        <h3 class="font-display font-bold text-xl">Free Explorer</h3>
+        <span class="px-3 py-1 rounded-full bg-white text-navy-900 text-xs font-black">POPULAR</span>
+      </div>
+      <div class="flex items-baseline gap-2"><span class="text-4xl font-black">$0</span><span class="text-white/50">/forever</span></div>
+      <ul class="space-y-2.5 text-sm">
+        <li class="flex gap-2.5"><i class="fa-solid fa-check text-neon-lime mt-0.5"></i> Host up to <b>2 bots 24/7</b></li>
+        <li class="flex gap-2.5"><i class="fa-solid fa-check text-neon-lime mt-0.5"></i> Auto-restart & live logs</li>
+        <li class="flex gap-2.5"><i class="fa-solid fa-check text-neon-lime mt-0.5"></i> Webhook & polling support</li>
+        <li class="flex gap-2.5"><i class="fa-solid fa-check text-neon-lime mt-0.5"></i> Community support</li>
+      </ul>
+      <button onclick="openAuth('register')" class="w-full py-3.5 rounded-full bg-white text-navy-900 font-bold hover:bg-white/90 transition">Start Free — 2 Bots</button>
+      <p class="text-center text-xs text-white/40">No credit card • Deploy in 8 seconds</p>
+    </div>
+    <div class="relative rounded-[24px] p-[1px] bg-gradient-to-br from-neon-cyan via-neon-purple to-neon-pink">
+      <div class="bg-gradient-to-br from-[#121a3d] to-[#0a0e1f] rounded-[24px] p-7 space-y-5">
+        <div class="flex items-center justify-between">
+          <h3 class="font-display font-bold text-xl flex items-center gap-2"><i class="fa-solid fa-crown text-yellow-400"></i> Admin Fleet</h3>
+          <span class="px-3 py-1 rounded-full bg-gradient-to-r from-neon-cyan to-neon-purple text-white text-xs font-black">UNLIMITED</span>
+        </div>
+        <div class="flex items-baseline gap-2"><span class="text-4xl font-black">∞</span><span class="text-white/60">bots • priority</span></div>
+        <ul class="space-y-2.5 text-sm">
+          <li class="flex gap-2.5"><i class="fa-solid fa-check text-neon-cyan mt-0.5"></i> <b>Unlimited bots 24/7</b> + priority queue</li>
+          <li class="flex gap-2.5"><i class="fa-solid fa-check text-neon-cyan mt-0.5"></i> Admin panel • all users & bots</li>
+          <li class="flex gap-2.5"><i class="fa-solid fa-check text-neon-cyan mt-0.5"></i> Broadcasts, kill switch, analytics</li>
+          <li class="flex gap-2.5"><i class="fa-solid fa-check text-neon-cyan mt-0.5"></i> Dedicated region & webhooks</li>
+        </ul>
+        <button onclick="openAuth('login'); setTimeout(()=>showToast('Use admin / admin123 to login as admin','info'),500)" class="w-full py-3.5 rounded-full bg-gradient-to-r from-neon-cyan to-neon-purple text-white font-bold shadow-lg shadow-purple-500/30">Login as Admin</button>
+        <p class="text-center text-xs text-white/50">Demo: <b class="text-white">admin / admin123</b> • Instant access</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Dashboard -->
+<section id="dashboard" class="max-w-[1400px] mx-auto px-4 md:px-6 pb-10">
+  <!-- Not logged in state -->
+  <div id="dashboardGuest" class="glass rounded-[24px] p-8 md:p-12 text-center space-y-6">
+    <div class="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center text-3xl shadow-xl"><i class="fa-solid fa-rocket"></i></div>
+    <div class="space-y-2">
+      <h2 class="font-display font-black text-3xl">Your Fleet Dashboard</h2>
+      <p class="text-white/60 max-w-xl mx-auto">Login to deploy bots 24/7. Users get 2 bots free. Admins get unlimited fleet + control center.</p>
+    </div>
+    <div class="flex flex-wrap justify-center gap-3">
+      <button onclick="openAuth('login')" class="px-8 py-3.5 rounded-full bg-gradient-to-r from-neon-cyan to-neon-purple font-bold shadow-lg">Login to Dashboard</button>
+      <button onclick="openAuth('register')" class="px-8 py-3.5 rounded-full glass font-bold">Create Account</button>
+    </div>
+    <div class="grid md:grid-cols-3 gap-4 text-left max-w-3xl mx-auto pt-4">
+      <div class="glass rounded-xl p-4 flex gap-3"><div class="w-10 h-10 rounded-lg bg-neon-cyan/20 flex items-center justify-center text-neon-cyan"><i class="fa-solid fa-bolt"></i></div><div><div class="font-bold text-sm">Deploy in 8s</div><div class="text-xs text-white/50">Paste token → Running</div></div></div>
+      <div class="glass rounded-xl p-4 flex gap-3"><div class="w-10 h-10 rounded-lg bg-neon-lime/20 flex items-center justify-center text-neon-lime"><i class="fa-solid fa-infinity"></i></div><div><div class="font-bold text-sm">24/7 Uptime</div><div class="text-xs text-white/50">Auto-restart & health</div></div></div>
+      <div class="glass rounded-xl p-4 flex gap-3"><div class="w-10 h-10 rounded-lg bg-neon-purple/20 flex items-center justify-center text-neon-purple"><i class="fa-solid fa-chart-simple"></i></div><div><div class="font-bold text-sm">Live Logs</div><div class="text-xs text-white/50">Terminal streaming</div></div></div>
+    </div>
+  </div>
+
+  <!-- Logged in dashboard -->
+  <div id="dashboardUser" class="hidden space-y-6">
+    <!-- Top bar -->
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h2 class="font-display font-black text-2xl md:text-3xl">Fleet Dashboard <span id="dashRoleBadge" class="ml-2 px-2.5 py-1 rounded-full bg-neon-purple text-white text-xs font-bold align-middle">USER</span></h2>
+        <p class="text-white/60 text-sm">Welcome back, <b id="dashUserName" class="text-white">User</b> • <span id="dashUserEmail" class="font-mono text-xs">user@fleet.com</span></p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="loadBots()" class="px-4 py-2 rounded-full glass text-sm font-semibold hover:bg-white/10"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        <button onclick="openDeployModal()" class="px-5 py-2.5 rounded-full bg-gradient-to-r from-neon-cyan to-neon-purple font-bold text-sm shadow-lg"><i class="fa-solid fa-plus"></i> Deploy New Bot</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="glass rounded-2xl p-5">
+        <div class="flex justify-between items-start"><div class="w-10 h-10 rounded-xl bg-neon-cyan/15 flex items-center justify-center text-neon-cyan"><i class="fa-solid fa-robot"></i></div><span class="text-xs px-2 py-1 rounded-full bg-white/10 font-mono" id="statLimit">0/2</span></div>
+        <div class="text-2xl font-black mt-3" id="statTotal">0</div><div class="text-xs font-bold tracking-widest text-white/50">TOTAL BOTS</div>
+        <div class="mt-3 h-1.5 bg-white/10 rounded-full overflow-hidden"><div id="statProgress" class="h-full bg-gradient-to-r from-neon-cyan to-neon-purple" style="width:0%"></div></div>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <div class="w-10 h-10 rounded-xl bg-neon-lime/15 flex items-center justify-center text-neon-lime"><i class="fa-solid fa-circle-play"></i></div>
+        <div class="text-2xl font-black mt-3" id="statRunning">0</div><div class="text-xs font-bold tracking-widest text-white/50">RUNNING 24/7</div>
+        <div class="text-xs text-neon-lime mt-1.5 font-semibold"><i class="fa-solid fa-arrow-trend-up"></i> All systems operational</div>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <div class="w-10 h-10 rounded-xl bg-yellow-400/15 flex items-center justify-center text-yellow-400"><i class="fa-solid fa-stopwatch"></i></div>
+        <div class="text-2xl font-black mt-3" id="statUptime">99.99%</div><div class="text-xs font-bold tracking-widest text-white/50">UPTIME SLA</div>
+        <div class="text-xs text-white/50 mt-1.5 font-mono" id="statRequests">0 requests today</div>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <div class="w-10 h-10 rounded-xl bg-neon-purple/15 flex items-center justify-center text-neon-purple"><i class="fa-solid fa-server"></i></div>
+        <div class="text-2xl font-black mt-3" id="statRegion">3 Regions</div><div class="text-xs font-bold tracking-widest text-white/50">FLEET REGIONS</div>
+        <div class="text-xs text-white/50 mt-1.5">us-east • eu-west • ap-south</div>
+      </div>
+    </div>
+
+    <!-- Deploy Card -->
+    <div class="glass rounded-[20px] p-6">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+        <h3 class="font-bold text-lg flex items-center gap-2"><span class="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center text-sm"><i class="fa-solid fa-plus"></i></span> Deploy New Bot</h3>
+        <span class="text-xs px-3 py-1 rounded-full bg-white/10 font-mono">Limit: <b id="deployLimitText">0/2</b> • <span class="text-neon-cyan">Get token from @BotFather</span></span>
+      </div>
+      <form id="deployForm" onsubmit="handleDeploy(event)" class="grid md:grid-cols-12 gap-3">
+        <div class="md:col-span-4">
+          <label class="text-xs font-bold tracking-widest text-white/60">BOT NAME</label>
+          <input id="botName" required placeholder="e.g., ShopAssist" class="mt-1 w-full px-4 py-3 rounded-xl bg-black/30 border border-white/10 outline-none focus:border-neon-cyan/50 focus:bg-black/40 placeholder:text-white/30 text-sm">
+        </div>
+        <div class="md:col-span-5">
+          <label class="text-xs font-bold tracking-widest text-white/60">TELEGRAM BOT TOKEN</label>
+          <input id="botToken" required placeholder="1234567890:AAHdqTcvCH1vGWJxfSeofS..." class="mt-1 w-full px-4 py-3 rounded-xl bg-black/30 border border-white/10 outline-none focus:border-neon-cyan/50 font-mono text-sm placeholder:text-white/30">
+          <div class="text-[11px] text-white/40 mt-1">Format: <span class="font-mono">123456789:AAH... (from @BotFather /newbot)</span></div>
+        </div>
+        <div class="md:col-span-3">
+          <label class="text-xs font-bold tracking-widest text-white/60">DESCRIPTION (OPTIONAL)</label>
+          <input id="botDesc" placeholder="What does it do?" class="mt-1 w-full px-4 py-3 rounded-xl bg-black/30 border border-white/10 outline-none focus:border-neon-cyan/50 placeholder:text-white/30 text-sm">
+        </div>
+        <div class="md:col-span-12 flex gap-3">
+          <button type="submit" id="deployBtn" class="flex-1 md:flex-none px-8 py-3 rounded-full bg-gradient-to-r from-neon-cyan to-neon-purple font-bold shadow-lg hover:scale-[1.01] transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-rocket"></i> <span>Deploy & Run 24/7</span>
+          </button>
+          <button type="button" onclick="fillDemoToken()" class="px-5 py-3 rounded-full glass font-semibold text-sm hover:bg-white/10">Fill Demo Token</button>
+          <span id="deployHint" class="text-xs text-white/50 self-center hidden md:inline">Takes ~8 seconds • Auto webhook</span>
+        </div>
+      </form>
+    </div>
+
+    <!-- Bots Grid -->
+    <div>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold">My Bots Fleet</h3>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="w-2 h-2 bg-neon-lime rounded-full animate-pulse"></span> live
+          <select id="botFilter" onchange="renderBots()" class="bg-black/30 border border-white/10 rounded-full px-3 py-1.5 outline-none">
+            <option value="all">All</option><option value="running">Running</option><option value="stopped">Stopped</option>
+          </select>
+        </div>
+      </div>
+      <div id="botsGrid" class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <!-- injected -->
+      </div>
+      <div id="botsEmpty" class="hidden glass rounded-2xl p-10 text-center space-y-3">
+        <div class="w-14 h-14 mx-auto rounded-xl bg-white/5 flex items-center justify-center text-xl">🤖</div>
+        <div class="font-bold">No bots yet</div>
+        <div class="text-sm text-white/50">Deploy your first bot above to start 24/7 hosting</div>
+      </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="adminPanel" class="hidden space-y-6">
+      <div class="h-px bg-gradient-to-r from-transparent via-neon-purple/50 to-transparent"></div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center"><i class="fa-solid fa-crown"></i></div>
+        <div>
+          <h3 class="font-display font-black text-xl">Admin Fleet Control</h3>
+          <p class="text-xs text-white/60">Unlimited bots • Global oversight • Kill switch</p>
+        </div>
+        <span class="ml-auto px-3 py-1 rounded-full bg-yellow-400 text-navy-900 text-xs font-black">ADMIN</span>
+      </div>
+
+      <!-- Admin Stats -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="rounded-2xl p-5 bg-gradient-to-br from-neon-cyan/20 to-cyan-600/20 border border-neon-cyan/20">
+          <div class="text-xs font-bold tracking-widest text-white/60">TOTAL USERS</div><div class="text-2xl font-black mt-1" id="admUsers">0</div><div class="text-xs text-neon-cyan">+12% this week</div>
+        </div>
+        <div class="rounded-2xl p-5 bg-gradient-to-br from-neon-purple/20 to-purple-600/20 border border-neon-purple/20">
+          <div class="text-xs font-bold tracking-widest text-white/60">TOTAL BOTS</div><div class="text-2xl font-black mt-1" id="admBots">0</div><div class="text-xs text-neon-purple">fleet-wide</div>
+        </div>
+        <div class="rounded-2xl p-5 bg-gradient-to-br from-neon-lime/15 to-emerald-600/15 border border-neon-lime/20">
+          <div class="text-xs font-bold tracking-widest text-white/60">RUNNING</div><div class="text-2xl font-black mt-1" id="admRunning">0</div><div class="text-xs text-neon-lime">24/7 active</div>
+        </div>
+        <div class="rounded-2xl p-5 bg-gradient-to-br from-pink-500/15 to-rose-600/15 border border-pink-500/20">
+          <div class="text-xs font-bold tracking-widest text-white/60">REQUESTS TODAY</div><div class="text-2xl font-black mt-1" id="admReq">0</div><div class="text-xs text-pink-400">API calls</div>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-2 glass rounded-2xl p-5">
+          <h4 class="font-bold mb-3 flex items-center gap-2"><i class="fa-solid fa-chart-line text-neon-cyan"></i> Fleet Load (24h)</h4>
+          <canvas id="admChart" height="120"></canvas>
+        </div>
+        <div class="glass rounded-2xl p-5">
+          <h4 class="font-bold mb-3">Broadcast to Fleet</h4>
+          <textarea id="broadcastMsg" placeholder="Message to all users..." class="w-full h-24 px-3 py-2 rounded-xl bg-black/30 border border-white/10 outline-none text-sm placeholder:text-white/30"></textarea>
+          <button onclick="sendBroadcast()" class="w-full mt-3 py-2.5 rounded-full bg-gradient-to-r from-neon-purple to-neon-pink font-bold text-sm">Send Broadcast</button>
+          <div class="text-xs text-white/40 mt-2">Reaches all hosted bots & users</div>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-4">
+        <div class="glass rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-3"><h4 class="font-bold">All Users</h4><button onclick="loadAdmin()" class="text-xs px-3 py-1 rounded-full bg-white/10"><i class="fa-solid fa-rotate"></i> Refresh</button></div>
+          <div class="overflow-auto max-h-[360px] hide-scrollbar">
+            <table class="w-full text-sm">
+              <thead class="text-xs text-white/50 sticky top-0 bg-navy-800"><tr><th class="text-left py-2">User</th><th>Email</th><th>Role</th><th>Bots</th><th></th></tr></thead>
+              <tbody id="adminUsersTbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-3"><h4 class="font-bold">All Bots (Fleet)</h4><span class="text-xs px-2 py-1 rounded-full bg-neon-lime/15 text-neon-lime border border-neon-lime/20">∞ admin</span></div>
+          <div class="overflow-auto max-h-[360px] hide-scrollbar">
+            <table class="w-full text-sm">
+              <thead class="text-xs text-white/50 sticky top-0 bg-navy-800"><tr><th class="text-left py-2">Bot</th><th>Owner</th><th>Status</th><th></th></tr></thead>
+              <tbody id="adminBotsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl p-5">
+        <h4 class="font-bold mb-3"><i class="fa-solid fa-terminal"></i> System Logs</h4>
+        <div id="adminLogs" class="terminal-bg rounded-xl p-4 font-mono text-xs space-y-1 border border-white/10 max-h-[220px] overflow-auto"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="border-t border-white/10 bg-black/20">
+  <div class="max-w-[1400px] mx-auto px-4 md:px-6 py-8">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center"><i class="fa-brands fa-telegram"></i></div>
+        <div><div class="font-display font-bold">TELEBOTFLEET</div><div class="text-xs text-white/50">© 2026 Fleet Hosting Inc. • Made for Telegram builders</div></div>
+      </div>
+      <div class="flex items-center gap-4 text-sm text-white/60">
+        <a href="#" class="hover:text-white">Docs</a><a href="#" class="hover:text-white">API</a><a href="#" class="hover:text-white">Status</a><span class="px-3 py-1 rounded-full bg-neon-lime/15 text-neon-lime text-xs font-bold border border-neon-lime/20">All systems operational</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Auth Modal -->
+<div id="authModal" class="fixed inset-0 z-[100] hidden">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeAuth()"></div>
+  <div class="relative max-w-[440px] mx-auto mt-[64px] md:mt-[80px] glass rounded-[24px] overflow-hidden shadow-2xl mx-4 animate-slideUp">
+    <div class="h-1 w-full bg-gradient-to-r from-neon-cyan via-neon-purple to-neon-pink"></div>
+    <div class="p-6">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center"><i class="fa-brands fa-telegram"></i></div>
+          <div><div class="font-bold">Welcome to Fleet</div><div class="text-xs text-white/50">Host bots 24/7 — free 2 bots</div></div>
+        </div>
+        <button onclick="closeAuth()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/15"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="mt-6 grid grid-cols-2 p-1 rounded-full bg-black/30 border border-white/10">
+        <button id="tabLogin" onclick="switchAuth('login')" class="py-2 rounded-full bg-white text-navy-900 font-bold text-sm">Login</button>
+        <button id="tabRegister" onclick="switchAuth('register')" class="py-2 rounded-full text-white/70 font-semibold text-sm">Register</button>
+      </div>
+      <!-- Login -->
+      <form id="loginForm" onsubmit="handleLogin(event)" class="mt-6 space-y-3">
+        <div>
+          <label class="text-xs font-bold tracking-widest text-white/60">USERNAME</label>
+          <input id="loginUser" required placeholder="admin" class="mt-1 w-full px-4 py-3 rounded-xl bg-black/30 border border-white/10 outline-none focus:border-neon-cyan/50 text-sm">
+        </div>
+        <div>
+          <label class="text-xs font-bold tracking-widest text-white/60">PASSWORD</label>
+          <input id="loginPass" type="password" required placeholder="••••••••" class="mt-1 w-full px-4 py-3 rounded-xl bg-black/30 border border-white/10 outline-none focus:border-neon-cyan/50 text-sm">
+        </div>
+        <div class="glass rounded-xl p-3 flex items-center justify-between text-xs">
+          <div class="space-y-1">
+            <div class="font-mono"><b class="text-neon-cyan">admin</b> / <b>admin123</b> <span class="px-1.5 py-0.5 rounded bg-yellow-400 text-navy-900 font-bold">ADMIN ∞</span></div>
+            <div class="font-mono"><b>demo</b> / <b>demo123</b> <span class="px-1.5 py-0.5 rounded bg-white/10">USER 2</span></div>
+          </div>
+          <button type="button" onclick="fillLogin('admin')" class="px-3 py-1.5 rounded-full bg-white/10 text-xs font-bold">Use Admin</button>
+        </div>
+        <button type="submit" class="w-full py-3 rounded-full bg-gradient-to-r from-neon-cyan to-neon-purple font-bold shadow-lg">Login & Open Dashboard</button>
+        <div class="text-center text-xs text-white/50">Don't have account? <button type="button" onclick="switchAuth('register')" class="text-neon-cyan font-bold">Create one</button></div>
+      </form>
+      <!-- Register -->
+      <form id="registerForm" onsubmit="handleRegister(event)" class="hidden mt-6 space-y-3">
+        <div>
+          <label class="text-xs font-bold tracking-widest text-white/60">USERNAME</label>
+          <input id="regUser" required placeholder="yourname" class="mt-1 w-full px-4 py-3 rounded-xl bg-black/30 border border-white/10 outline-none focus:border-neon-cyan/50 text-sm">
+        </div>
+        <div>
+          <label class="text-xs font-bold tracking-widest text-white/60">EMAIL</label>
+          <input id="regEmail" type="email" required placeholder="you@fleet.com" class="mt-1 w-full px-4 py-3 rounded-xl bg-black/30 border border-white/10 outline-none focus:border-neon-cyan/50 text-sm">
+        </div>
+        <div>
+          <label class="text-xs font-bold tracking-widest text-white/60">PASSWORD</label>
+          <input id="regPass" type="password" required placeholder="Min 6 chars" class="mt-1 w-full px-4 py-3 rounded-xl bg-black/30 border border-white/10 outline-none focus:border-neon-cyan/50 text-sm">
+        </div>
+        <div class="text-xs text-white/50 glass rounded-xl p-3">By registering you get <b class="text-white">2 bots free 24/7</b>. Admins get unlimited fleet.</div>
+        <button type="submit" class="w-full py-3 rounded-full bg-gradient-to-r from-neon-cyan to-neon-purple font-bold shadow-lg">Create Account & Deploy</button>
+        <div class="text-center text-xs text-white/50">Already have account? <button type="button" onclick="switchAuth('login')" class="text-neon-cyan font-bold">Login</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Logs Modal -->
+<div id="logsModal" class="fixed inset-0 z-[100] hidden">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeLogs()"></div>
+  <div class="relative max-w-[760px] mx-auto mt-16 glass rounded-[20px] overflow-hidden shadow-2xl mx-4">
+    <div class="h-12 flex items-center justify-between px-5 bg-white/[0.04] border-b border-white/10">
+      <div class="flex items-center gap-3"><span class="w-3 h-3 rounded-full bg-red-400"></span><span class="w-3 h-3 rounded-full bg-yellow-400"></span><span class="w-3 h-3 rounded-full bg-green-400"></span><span class="font-mono text-sm" id="logsTitle">bot logs — live</span></div>
+      <div class="flex items-center gap-2"><span class="px-2.5 py-1 rounded-full bg-neon-lime/15 text-neon-lime text-xs font-bold border border-neon-lime/20 flex items-center gap-1.5"><span class="w-2 h-2 bg-neon-lime rounded-full animate-pulse"></span> LIVE</span><button onclick="closeLogs()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button></div>
+    </div>
+    <div class="terminal-bg p-4 font-mono text-xs leading-relaxed max-h-[420px] overflow-auto" id="logsBody"></div>
+    <div class="p-3 flex gap-2 bg-black/30 border-t border-white/10">
+      <input id="testMsgInput" placeholder="Send test message to bot..." class="flex-1 px-4 py-2.5 rounded-full bg-white/10 border border-white/10 outline-none text-sm placeholder:text-white/40">
+      <button onclick="sendTestMessage()" class="px-5 py-2.5 rounded-full bg-neon-cyan text-navy-900 font-bold text-sm">Send</button>
+      <button onclick="refreshLogs()" class="px-4 py-2.5 rounded-full glass text-sm"><i class="fa-solid fa-rotate"></i></button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div id="confirmModal" class="fixed inset-0 z-[110] hidden">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeConfirm()"></div>
+  <div class="relative max-w-[420px] mx-auto mt-32 glass rounded-2xl p-6 text-center space-y-4 mx-4">
+    <div class="w-12 h-12 mx-auto rounded-xl bg-red-500/20 flex items-center justify-center text-red-400"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <h3 id="confirmTitle" class="font-bold text-lg">Are you sure?</h3><p id="confirmDesc" class="text-sm text-white/60"></p>
+    <div class="flex gap-3"><button onclick="closeConfirm()" class="flex-1 py-2.5 rounded-full glass font-semibold">Cancel</button><button id="confirmOk" class="flex-1 py-2.5 rounded-full bg-red-500 font-bold">Delete</button></div>
+  </div>
+</div>
+
+<script>
+const API_BASE = window.location.origin + '/api';
+let TOKEN = localStorage.getItem('telebotfleet_token') || '';
+let USER = JSON.parse(localStorage.getItem('telebotfleet_user') || 'null');
+let CURRENT_BOT = null;
+let BOTS = [];
+
+// helpers
+function toast(msg, type='ok'){
+  const wrap=document.getElementById('toastWrap');
+  const el=document.createElement('div');
+  const bg = type==='error' ? 'bg-red-500' : type==='info' ? 'bg-neon-cyan text-navy-900' : 'bg-neon-lime text-navy-900';
+  el.className = `px-4 py-3 rounded-xl shadow-xl text-sm font-semibold flex items-center gap-2 ${bg} animate-slideUp`;
+  el.innerHTML = `<i class="fa-solid ${type==='error'?'fa-circle-xmark':'fa-circle-check'}"></i> <span>${msg}</span>`;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateX(20px)'; setTimeout(()=>el.remove(),300)}, 3500);
+}
+function showToast(m,t){ toast(m,t)}
+function apiFetch(path, opts={}){
+  opts.headers = opts.headers || {};
+  if(TOKEN) opts.headers['Authorization'] = `Bearer ${TOKEN}`;
+  opts.headers['Content-Type'] = 'application/json';
+  return fetch(API_BASE + path, opts).then(async r=>{
+    const data = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(data.detail || data.message || 'Request failed');
+    return data;
+  });
+}
+function updateAuthUI(){
+  const authNav=document.getElementById('authNav'), userNav=document.getElementById('userNav');
+  if(USER && TOKEN){
+    authNav.classList.add('hidden');
+    userNav.classList.remove('hidden'); userNav.classList.add('flex');
+    document.getElementById('navUserName').textContent = USER.username;
+    document.getElementById('navAvatar').textContent = (USER.avatar||USER.username[0]).toUpperCase();
+    document.getElementById('dashboardGuest').classList.add('hidden');
+    document.getElementById('dashboardUser').classList.remove('hidden');
+    document.getElementById('dashUserName').textContent = USER.username;
+    document.getElementById('dashUserEmail').textContent = USER.email;
+    const isAdmin = USER.role==='admin';
+    document.getElementById('dashRoleBadge').textContent = isAdmin? 'ADMIN ∞':'USER';
+    document.getElementById('dashRoleBadge').className = `ml-2 px-2.5 py-1 rounded-full text-white text-xs font-bold align-middle ${isAdmin?'bg-gradient-to-r from-yellow-400 to-orange-500 text-navy-900':'bg-neon-purple'}`;
+    document.getElementById('adminPanel').classList.toggle('hidden', !isAdmin);
+    loadBots();
+    if(isAdmin) loadAdmin();
+  } else {
+    authNav.classList.remove('hidden');
+    userNav.classList.add('hidden'); userNav.classList.remove('flex');
+    document.getElementById('dashboardGuest').classList.remove('hidden');
+    document.getElementById('dashboardUser').classList.add('hidden');
+  }
+}
+function scrollToDashboard(){
+  document.getElementById('dashboard').scrollIntoView({behavior:'smooth'});
+  if(!USER) setTimeout(()=>openAuth('login'), 400);
+}
+function openAuth(mode){
+  document.getElementById('authModal').classList.remove('hidden');
+  switchAuth(mode);
+}
+function closeAuth(){ document.getElementById('authModal').classList.add('hidden'); }
+function switchAuth(mode){
+  const isLogin = mode==='login';
+  document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
+  document.getElementById('registerForm').classList.toggle('hidden', isLogin);
+  document.getElementById('tabLogin').className = isLogin ? 'py-2 rounded-full bg-white text-navy-900 font-bold text-sm' : 'py-2 rounded-full text-white/70 font-semibold text-sm';
+  document.getElementById('tabRegister').className = !isLogin ? 'py-2 rounded-full bg-white text-navy-900 font-bold text-sm' : 'py-2 rounded-full text-white/70 font-semibold text-sm';
+}
+function fillLogin(who){
+  if(who==='admin'){ document.getElementById('loginUser').value='admin'; document.getElementById('loginPass').value='admin123'; }
+}
+async function handleLogin(e){
+  e.preventDefault();
+  const btn=e.target.querySelector('button[type=submit]'); const old=btn.innerHTML; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Logging in...'; btn.disabled=true;
+  try{
+    const data=await apiFetch('/auth/login',{method:'POST', body:JSON.stringify({username:document.getElementById('loginUser').value.trim(), password:document.getElementById('loginPass').value})});
+    TOKEN=data.token; USER=data.user;
+    localStorage.setItem('telebotfleet_token', TOKEN); localStorage.setItem('telebotfleet_user', JSON.stringify(USER));
+    closeAuth(); updateAuthUI(); toast(`Welcome back, ${USER.username}! • ${USER.role==='admin'?'Unlimited fleet':'2 bots free'}`);
+    setTimeout(()=>document.getElementById('dashboard').scrollIntoView({behavior:'smooth'}),200);
+  }catch(err){ toast(err.message,'error') } finally { btn.innerHTML=old; btn.disabled=false }
+}
+async function handleRegister(e){
+  e.preventDefault();
+  const btn=e.target.querySelector('button[type=submit]'); const old=btn.innerHTML; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Creating...'; btn.disabled=true;
+  try{
+    const data=await apiFetch('/auth/register',{method:'POST', body:JSON.stringify({username:document.getElementById('regUser').value.trim(), email:document.getElementById('regEmail').value.trim(), password:document.getElementById('regPass').value})});
+    TOKEN=data.token; USER=data.user;
+    localStorage.setItem('telebotfleet_token', TOKEN); localStorage.setItem('telebotfleet_user', JSON.stringify(USER));
+    closeAuth(); updateAuthUI(); toast(`Account created! You can host 2 bots 24/7`);
+  }catch(err){ toast(err.message,'error') } finally { btn.innerHTML=old; btn.disabled=false }
+}
+function logout(){
+  TOKEN=''; USER=null; localStorage.removeItem('telebotfleet_token'); localStorage.removeItem('telebotfleet_user');
+  updateAuthUI(); toast('Logged out','info'); document.getElementById('dashboard').scrollIntoView({behavior:'smooth'});
+}
+function openCreateFlow(){
+  if(!USER) return openAuth('login');
+  document.getElementById('dashboard').scrollIntoView({behavior:'smooth'});
+  setTimeout(()=>document.getElementById('botName').focus(),500);
+}
+function fillDemoToken(){
+  const rand = Math.floor(1000000000 + Math.random()*9000000000);
+  const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+  let suffix=''; for(let i=0;i<35;i++) suffix+=chars[Math.floor(Math.random()*chars.length)];
+  document.getElementById('botToken').value = `${rand}:AAH${suffix}`;
+  if(!document.getElementById('botName').value) document.getElementById('botName').value = 'DemoBot'+Math.floor(Math.random()*99);
+}
+function openDeployModal(){
+  document.getElementById('dashboard').scrollIntoView({behavior:'smooth'});
+  document.getElementById('botName').focus();
+}
+async function handleDeploy(e){
+  e.preventDefault();
+  const name=document.getElementById('botName').value.trim();
+  const token=document.getElementById('botToken').value.trim();
+  const desc=document.getElementById('botDesc').value.trim();
+  const btn=document.getElementById('deployBtn'); const old=btn.innerHTML; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Deploying...'; btn.disabled=true;
+  try{
+    const res=await apiFetch('/bots',{method:'POST', body:JSON.stringify({name, token, description:desc})});
+    toast(res.message); e.target.reset(); loadBots();
+    if(USER.role==='admin') loadAdmin();
+  }catch(err){ toast(err.message,'error') } finally { btn.innerHTML=old; btn.disabled=false }
+}
+async function loadBots(){
+  if(!TOKEN) return;
+  try{
+    const bots=await apiFetch('/bots');
+    BOTS=bots;
+    // stats
+    const total=bots.length; const running=bots.filter(b=>b.status==='running').length;
+    const limit = USER.role==='admin' ? '∞' : '2';
+    const used = USER.role==='admin' ? total : total;
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statRunning').textContent = running;
+    document.getElementById('statLimit').textContent = `${total}/${limit}`;
+    document.getElementById('deployLimitText').textContent = `${total}/${limit}`;
+    document.getElementById('statProgress').style.width = USER.role==='admin' ? '100%' : `${Math.min(100, total/2*100)}%`;
+    document.getElementById('statRequests').textContent = `${bots.reduce((a,b)=>a+(b.requests||0),0).toLocaleString()} requests today`;
+    document.getElementById('deployBtn').disabled = USER.role!=='admin' && total>=2;
+    if(USER.role!=='admin' && total>=2) document.getElementById('deployBtn').innerHTML='<i class="fa-solid fa-lock"></i> Limit Reached (2/2)';
+    else document.getElementById('deployBtn').innerHTML='<i class="fa-solid fa-rocket"></i> <span>Deploy & Run 24/7</span>';
+    renderBots();
+  }catch(err){
+    console.error(err);
+    if(err.message.includes('Token')||err.message.includes('Authorization')) logout();
+  }
+}
+function renderBots(){
+  const grid=document.getElementById('botsGrid'), empty=document.getElementById('botsEmpty');
+  const filter=document.getElementById('botFilter').value;
+  let list=[...BOTS];
+  if(filter!=='all') list=list.filter(b=>b.status===filter);
+  if(list.length===0){
+    grid.innerHTML=''; empty.classList.remove('hidden');
+    if(BOTS.length===0) empty.innerHTML=`<div class="w-14 h-14 mx-auto rounded-xl bg-white/5 flex items-center justify-center text-xl">🤖</div><div class="font-bold">No bots yet</div><div class="text-sm text-white/50">Deploy your first bot above to start 24/7 hosting</div>`;
+    else empty.innerHTML=`<div class="font-bold">No ${filter} bots</div><div class="text-sm text-white/50">Try another filter</div>`;
+    return;
+  }
+  empty.classList.add('hidden');
+  grid.innerHTML = list.map(b=>{
+    const isRunning=b.status==='running';
+    const badge = isRunning ? `<span class="text-[11px] px-2 py-1 rounded-full bg-neon-lime/15 text-neon-lime border border-neon-lime/20 font-bold flex items-center gap-1.5"><span class="w-2 h-2 bg-neon-lime rounded-full animate-pulse"></span>RUNNING 24/7</span>` : `<span class="text-[11px] px-2 py-1 rounded-full bg-white/10 text-white/60 font-bold">STOPPED</span>`;
+    const cpu = b.cpu||Math.floor(Math.random()*30+10);
+    const ram = b.ram||128;
+    const req = b.requests||0;
+    return `
+    <div class="glass rounded-2xl overflow-hidden group hover:border-neon-cyan/30 transition">
+      <div class="h-1 w-full ${isRunning?'bg-gradient-to-r from-neon-lime to-emerald-500':'bg-white/10'}"></div>
+      <div class="p-5 space-y-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex gap-3">
+            <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center text-lg">🤖</div>
+            <div>
+              <div class="font-bold text-sm leading-tight">${escapeHtml(b.name)}</div>
+              <div class="text-xs font-mono text-white/50">@${escapeHtml(b.bot_username)} • ${b.region||'us-east-1'}</div>
+              <div class="text-[11px] font-mono text-white/30 mt-1">${escapeHtml(b.masked_token||'••••')}</div>
+            </div>
+          </div>
+          ${badge}
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-black/30 rounded-xl py-2 border border-white/5"><div class="text-sm font-black text-neon-cyan">${b.uptime_display||'0h 0m'}</div><div class="text-[10px] tracking-widest text-white/40 font-bold">UPTIME</div></div>
+          <div class="bg-black/30 rounded-xl py-2 border border-white/5"><div class="text-sm font-black">${cpu}%</div><div class="text-[10px] tracking-widest text-white/40 font-bold">CPU</div></div>
+          <div class="bg-black/30 rounded-xl py-2 border border-white/5"><div class="text-sm font-black">${ram}MB</div><div class="text-[10px] tracking-widest text-white/40 font-bold">RAM</div></div>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-white/50"><i class="fa-solid fa-chart-simple text-neon-purple"></i> ${req.toLocaleString()} requests • <span class="font-mono">${new Date(b.created_at).toLocaleDateString()}</span></div>
+        <div class="grid grid-cols-4 gap-2">
+          ${isRunning? `<button onclick="controlBot('${b.id}','stop')" class="py-2 rounded-full bg-white/10 hover:bg-yellow-500/20 hover:text-yellow-300 font-semibold text-xs"><i class="fa-solid fa-pause"></i> Stop</button>` : `<button onclick="controlBot('${b.id}','start')" class="py-2 rounded-full bg-neon-lime/15 hover:bg-neon-lime/25 text-neon-lime font-semibold text-xs border border-neon-lime/20"><i class="fa-solid fa-play"></i> Start</button>`}
+          <button onclick="controlBot('${b.id}','restart')" class="py-2 rounded-full bg-white/10 hover:bg-neon-cyan/15 hover:text-neon-cyan font-semibold text-xs"><i class="fa-solid fa-rotate"></i> Restart</button>
+          <button onclick="openLogs('${b.id}')" class="py-2 rounded-full bg-white text-navy-900 font-bold text-xs"><i class="fa-solid fa-terminal"></i> Logs</button>
+          <button onclick="confirmDelete('${b.id}','${escapeHtml(b.name)}')" class="py-2 rounded-full bg-red-500/15 hover:bg-red-500/25 text-red-400 font-semibold text-xs"><i class="fa-solid fa-trash"></i></button>
+        </div>
+        <div class="text-[11px] text-white/40 font-mono line-clamp-1">${escapeHtml(b.description||'Telegram bot hosted 24/7 on TeleBotFleet')}</div>
+      </div>
+    </div>`
+  }).join('');
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) }
+async function controlBot(id, action){
+  try{
+    const res=await apiFetch(`/bots/${id}/${action}`,{method:'POST'});
+    toast(res.message); loadBots(); if(USER.role==='admin') loadAdmin();
+  }catch(e){ toast(e.message,'error') }
+}
+function confirmDelete(id,name){
+  document.getElementById('confirmTitle').textContent='Delete Bot?';
+  document.getElementById('confirmDesc').textContent=`This will terminate hosting for "${name}" and remove it from fleet. This cannot be undone.`;
+  document.getElementById('confirmOk').onclick=async ()=>{
+    closeConfirm();
+    try{ await apiFetch(`/bots/${id}`,{method:'DELETE'}); toast('Bot deleted'); loadBots(); if(USER.role==='admin') loadAdmin(); }catch(e){ toast(e.message,'error') }
+  };
+  document.getElementById('confirmModal').classList.remove('hidden');
+}
+function closeConfirm(){ document.getElementById('confirmModal').classList.add('hidden') }
+async function openLogs(id){
+  CURRENT_BOT=id;
+  document.getElementById('logsModal').classList.remove('hidden');
+  const bot=BOTS.find(b=>b.id===id);
+  document.getElementById('logsTitle').textContent = bot ? `${bot.name} — @${bot.bot_username} logs` : 'bot logs';
+  await refreshLogs();
+}
+function closeLogs(){ document.getElementById('logsModal').classList.add('hidden'); CURRENT_BOT=null; }
+async function refreshLogs(){
+  if(!CURRENT_BOT) return;
+  try{
+    const data=await apiFetch(`/bots/${CURRENT_BOT}/logs`);
+    const body=document.getElementById('logsBody');
+    body.innerHTML = data.logs.map(l=>{
+      let cls='text-white/80';
+      if(l.includes('ERROR')||l.includes('Stopped')) cls='text-red-400';
+      else if(l.includes('✔')||l.includes('online')||l.includes('Ready')) cls='text-neon-lime';
+      else if(l.includes('polling')||l.includes('Heartbeat')) cls='text-neon-cyan';
+      return `<div class="${cls}">${escapeHtml(l)}</div>`;
+    }).join('') + `<div class="text-neon-cyan mt-2 flex items-center gap-2"><span class="w-2 h-5 bg-neon-cyan animate-pulse inline-block"></span> streaming live 24/7...</div>`;
+    body.scrollTop=body.scrollHeight;
+  }catch(e){ toast(e.message,'error') }
+}
+async function sendTestMessage(){
+  const msg=document.getElementById('testMsgInput').value.trim() || 'Hello from TeleBotFleet!';
+  if(!CURRENT_BOT) return;
+  try{
+    const res=await apiFetch(`/bots/${CURRENT_BOT}/send_test`,{method:'POST', body:JSON.stringify({message:msg})});
+    toast(res.message); document.getElementById('testMsgInput').value=''; refreshLogs();
+  }catch(e){ toast(e.message,'error') }
+}
+
+// Admin
+let admChart=null;
+async function loadAdmin(){
+  if(!USER || USER.role!=='admin') return;
+  try{
+    const stats=await apiFetch('/admin/stats');
+    document.getElementById('admUsers').textContent=stats.total_users;
+    document.getElementById('admBots').textContent=stats.total_bots;
+    document.getElementById('admRunning').textContent=stats.running_bots;
+    document.getElementById('admReq').textContent=stats.requests_today.toLocaleString();
+    const logsEl=document.getElementById('adminLogs');
+    logsEl.innerHTML = (stats.recent_logs.length? stats.recent_logs : [{action:'No logs yet', user:'system', time:new Date().toISOString()}]).map(l=>`<div class="flex gap-2"><span class="text-white/30">${new Date(l.time).toLocaleTimeString()}</span><span class="text-neon-purple">${escapeHtml(l.user)}</span><span class="text-white/80">${escapeHtml(l.action)}</span></div>`).join('');
+
+    const users=await apiFetch('/admin/users');
+    document.getElementById('adminUsersTbody').innerHTML = users.map(u=>`
+      <tr class="border-b border-white/5 hover:bg-white/[0.03]">
+        <td class="py-2.5"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center text-xs font-bold">${escapeHtml(u.avatar)}</div><span class="font-semibold">${escapeHtml(u.username)}</span></div></td>
+        <td class="text-white/60 font-mono text-xs">${escapeHtml(u.email)}</td>
+        <td><span class="px-2 py-0.5 rounded-full text-xs font-bold ${u.role==='admin'?'bg-yellow-400 text-navy-900':'bg-white/10'}">${u.role}</span></td>
+        <td class="text-center font-bold">${u.bots_count}</td>
+        <td><button onclick="deleteUser('${u.id}')" class="px-2 py-1 rounded-full bg-red-500/15 text-red-400 text-xs hover:bg-red-500/25"><i class="fa-solid fa-trash"></i></button></td>
+      </tr>`).join('');
+
+    const bots=await apiFetch('/admin/bots');
+    document.getElementById('adminBotsTbody').innerHTML = bots.map(b=>`
+      <tr class="border-b border-white/5 hover:bg-white/[0.03]">
+        <td class="py-2.5"><div class="font-semibold text-sm">${escapeHtml(b.name)}</div><div class="text-xs font-mono text-white/40">@${escapeHtml(b.bot_username)}</div></td>
+        <td class="text-xs">${escapeHtml(b.username_owner)}</td>
+        <td><span class="px-2 py-0.5 rounded-full text-xs font-bold ${b.status==='running'?'bg-neon-lime/15 text-neon-lime border border-neon-lime/20':'bg-white/10 text-white/60'}">${b.status}</span></td>
+        <td class="flex gap-1 py-2">
+          <button onclick="controlBot('${b.id}','${b.status==='running'?'stop':'start'}')" class="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs"><i class="fa-solid ${b.status==='running'?'fa-pause':'fa-play'}"></i></button>
+          <button onclick="adminDeleteBot('${b.id}')" class="w-7 h-7 rounded-full bg-red-500/15 text-red-400 flex items-center justify-center text-xs"><i class="fa-solid fa-trash"></i></button>
+        </td>
+      </tr>`).join('');
+
+    // chart
+    const ctx=document.getElementById('admChart');
+    if(ctx){
+      if(admChart) admChart.destroy();
+      admChart=new Chart(ctx,{
+        type:'line',
+        data:{
+          labels:['00:00','04:00','08:00','12:00','16:00','20:00','24:00'],
+          datasets:[{label:'Requests', data:[320, 540, 800, 1200, 1800, 1500, 1900], borderColor:'#00e5ff', backgroundColor:'rgba(0,229,255,0.15)', tension:0.4, fill:true, pointRadius:0},{label:'Bots Online', data:[12, 15, 18, 22, 28, 30, 32], borderColor:'#8b5cf6', backgroundColor:'rgba(139,92,246,0.12)', tension:0.4, fill:true, pointRadius:0}]
+        },
+        options:{responsive:true, plugins:{legend:{labels:{color:'#fff'}}}, scales:{x:{ticks:{color:'#9ca3af'}, grid:{color:'rgba(255,255,255,0.05)'}}, y:{ticks:{color:'#9ca3af'}, grid:{color:'rgba(255,255,255,0.05)'}}}}
+      });
+    }
+  }catch(e){ console.error(e) }
+}
+async function deleteUser(id){
+  if(!confirm('Delete user and all their bots?')) return;
+  try{ await apiFetch(`/admin/users/${id}`,{method:'DELETE'}); toast('User deleted'); loadAdmin(); loadBots(); }catch(e){ toast(e.message,'error') }
+}
+async function adminDeleteBot(id){
+  if(!confirm('Delete this bot?')) return;
+  try{ await apiFetch(`/admin/bots/${id}`,{method:'DELETE'}); toast('Bot deleted by admin'); loadAdmin(); loadBots(); }catch(e){ toast(e.message,'error') }
+}
+async function sendBroadcast(){
+  const msg=document.getElementById('broadcastMsg').value.trim();
+  if(!msg) return toast('Enter broadcast message','error');
+  try{ const res=await apiFetch('/admin/broadcast',{method:'POST', body:JSON.stringify({message:msg})}); toast(res.message); document.getElementById('broadcastMsg').value=''; loadAdmin(); }catch(e){ toast(e.message,'error') }
+}
+
+// live time
+setInterval(()=>{
+  const el=document.getElementById('heroLiveTime');
+  if(el) el.textContent = new Date().toISOString().slice(11,19) + ' UTC';
+},1000);
+// mobile
+document.getElementById('mobileMenuBtn').onclick=()=>{
+  document.getElementById('mobileMenu').classList.toggle('hidden');
+};
+// init
+updateAuthUI();
+if(USER) loadBots();
+</script>
+</body>
+</html>
