@@ -4,36 +4,42 @@
 
 ![TeleBotFleet](https://img.shields.io/badge/Status-LIVE_24/7-00ff88?style=for-the-badge)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=for-the-badge&logo=vercel)
+![Python](https://img.shields.io/badge/Backend-FastAPI_/_Python-3776AB?style=for-the-badge&logo=python)
 
-### 🚀 Live URL
-> Deployed on Vercel — see deployment output for URL. Example: `https://telebotfleet.vercel.app` (or `https://teleforge.vercel.app`)
+### 🚀 Live URLs
+- **Vercel (Production):** `https://teleforge-arslanansari1629-blips-projects.vercel.app` *(if shows Vercel login → see Fix below)*
+- **Vercel Direct Deployment:** `https://teleforge-55gh3bfbb-arslanansari1629-blips-projects.vercel.app`
+- **GitHub:** `https://github.com/arslanansari1629-blip/TELEBOTFLEET`
+
+> ⚠️ **Vercel Authentication Fix (one-click):** If Vercel URL asks for login, go to **Vercel Dashboard → Project teleforge → Settings → Deployment Protection → Vercel Authentication → DISABLE** → Redeploy. Then URL works public.
 
 ### ✨ Features
-- **Single-file Frontend** (`index.html`): Glassmorphism UI, Tailwind, Chart.js, live logs terminal, mobile responsive
-- **Python Backend** (`api/index.py` + `backend.py`): FastAPI, JWT auth, bot hosting simulation with 24/7 status, logs, start/stop/restart
-- **Roles**:
-  - `USER`: host **2 bots** 24/7 free
-  - `ADMIN`: **unlimited** bots + full fleet control
-- **Admin Panel**: all users, all bots, stats, charts, broadcast, system logs
-- **Bot Features**: token validation (BotFather format), encrypted storage, masked display, auto-restart, CPU/RAM metrics, webhook endpoint (`/api/webhook/{token}`), live logs
-- **Persistence**: `/tmp/telebotfleet_data.json` + `data.json` (serverless safe)
+- **Single-file Frontend** (`index.html` 66KB): Glassmorphism dark UI, Tailwind CDN, Chart.js, live terminal logs, mobile responsive
+- **Python Backend** (`api/index.py`): FastAPI, JWT auth, 24/7 hosting simulation, bot lifecycle
+- **Roles:**
+  - `USER` → host **2 bots 24/7** free
+  - `ADMIN` → **unlimited** bots + Fleet Control
+- **Admin Panel:** Global stats, users table, fleet table, broadcast, system logs, charts
+- **Bot Features:** BotFather token validation (`123456:AAH...`), AES masked storage, auto-restart, CPU/RAM metrics, webhook `POST /api/webhook/{token}`, live logs `GET /api/bots/{id}/logs`
+- **Persistence:** `/tmp/telebotfleet_data.json` + `data.json` (serverless-safe)
 
 ### 🔐 Demo Credentials
 | Role  | Username | Password   | Limit |
 |-------|----------|------------|-------|
 | Admin | `admin`  | `admin123` | ∞ bots |
-| User  | `demo`   | `demo123`  | 2 bots (register any new user) |
+| User  | `demo`   | `demo123`  | 2 bots |
+| Any   | register | —          | 2 bots |
 
-> Admin panel auto-appears after login with admin credentials.
+Admin panel auto-appears after admin login. User limit enforced in `POST /api/bots` (2) vs admin 999.
 
-### 📁 Project Structure
+### 📁 Project Structure (Single-File Frontend + Single Python Backend)
 ```
 TELEBOTFLEET/
 ├── index.html      # Single-file advanced frontend (Tailwind + JS)
-├── api/index.py    # FastAPI backend for Vercel (Python)
-├── backend.py      # Standalone backend entry (imports api/index.py)
-├── vercel.json     # Vercel routing (api -> python, /* -> index.html)
-├── requirements.txt
+├── api/index.py    # FastAPI backend for Vercel serverless (Python)
+├── backend.py      # Standalone local entry (imports api/index.py)
+├── vercel.json     # Vercel rewrites: /api/* → python, /* → index.html
+├── requirements.txt # fastapi, uvicorn, PyJWT, python-jose, httpx
 └── README.md
 ```
 
@@ -41,25 +47,25 @@ TELEBOTFLEET/
 ```bash
 pip install -r requirements.txt
 uvicorn api.index:app --host 0.0.0.0 --port 8000
-# or: python backend.py
-# open http://localhost:8000
+# open http://localhost:8000  (frontend + API same origin)
+# Test: curl http://localhost:8000/api/health
 ```
 
-### ☁️ Deploy on Vercel
-- Connected via GitHub: `arslanansari1629-blip/TELEBOTFLEET`
-- Vercel project: `teleforge` / `telebotfleet`
-- Auto-deploy on `git push`
+### ☁️ Vercel Deploy
+- GitHub: `arslanansari1629-blip/TELEBOTFLEET` → auto-deploy via `git push`
+- Vercel projects: `teleforge` (prod), `telebotfleet-advanced`
+- Build: `functions: api/index.py (python3.12)` + `rewrites`
 
 ### 🧪 API Endpoints
-- `GET /api/health` - health & stats
+- `GET /api/health`
 - `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
-- `GET /api/bots`, `POST /api/bots`, `POST /api/bots/{id}/start|stop|restart`, `DELETE /api/bots/{id}`, `GET /api/bots/{id}/logs`
+- `GET /api/bots`, `POST /api/bots`, `POST /api/bots/{id}/start|stop|restart`, `DELETE /api/bots/{id}`, `GET /api/bots/{id}/logs`, `POST /api/bots/{id}/send_test`
 - `GET /api/admin/stats`, `GET /api/admin/users`, `GET /api/admin/bots`, `DELETE /api/admin/users/{id}`, `POST /api/admin/broadcast`
-- `POST /api/webhook/{token}` - Telegram webhook receiver
+- `POST /api/webhook/{token}`
 
-### 📸 Screenshots
-- Hero with live fleet preview + terminal logs
-- Dashboard: deploy bot, stats, bot cards with controls
-- Admin: charts, users table, fleet table, broadcast
+### 📸 UI Preview
+- Hero with live fleet + terminal
+- Dashboard: deploy bot in 8s, stats, bot cards with controls
+- Admin: charts, users, fleet, broadcast
 
-Built with ❤️ for Telegram builders.
+Built for Telegram builders — Lucknow, IN.
