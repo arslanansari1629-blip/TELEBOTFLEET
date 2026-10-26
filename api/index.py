@@ -11,6 +11,8 @@ from typing import Optional, List, Dict, Any
 import jwt
 from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 # --- Config ---
@@ -170,6 +172,19 @@ class BotCreateRequest(BaseModel):
 
 class BroadcastRequest(BaseModel):
     message: str
+
+# Serve frontend at root for local dev
+@app.get("/", response_class=HTMLResponse)
+async def serve_root():
+    for p in ["index.html", os.path.join(os.path.dirname(__file__), "..", "index.html"), "/tmp/index.html"]:
+        if os.path.exists(p):
+            with open(p, "r") as f:
+                return HTMLResponse(f.read())
+    return HTMLResponse("<h1>TeleBotFleet Running - Frontend not found</h1><p><a href='/api/health'>/api/health</a>")
+
+@app.get("/index.html", response_class=HTMLResponse)
+async def serve_index():
+    return await serve_root()
 
 # --- Routes ---
 
